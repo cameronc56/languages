@@ -1,0 +1,1 @@
+("5.3.6" ("da2899ab612870cf1b5266036fe43c55bb8ba853" . "b93a1bde76ccc646afe1fec1f8c6e1c655e1dd43") (collects #"racket" #"main.rkt") (collects #"2htdp" #"image.rkt") (collects #"rackunit" #"text-ui.rkt") (collects #"2htdp" #"universe.rkt") (collects #"rackunit" #"main.rkt") (collects #"racket" #"lang" #"reader.rkt"))

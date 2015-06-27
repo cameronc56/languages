@@ -1,0 +1,1 @@
+("5.3.6" ("f3af896d36de4ca9b50b98e2d73a5a1f77894fce" . "011b72945d962dc1c9a9b69f022a79af81e8ce65") (collects #"racket" #"main.rkt") (collects #"realm" #"chapter14" #"server.rkt") (collects #"realm" #"chapter14" #"client.rkt") (collects #"2htdp" #"universe.rkt") (collects #"racket" #"lang" #"reader.rkt"))
