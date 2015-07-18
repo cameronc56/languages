@@ -34,17 +34,17 @@ Questions:
 
 * What file(s) does the compiler (javac) generate on disk?
 
-Hello.class
+##Hello.class
 
 * If you cd up a directory (so that you're in the parent of the src dir), can you still run Hello?
   * Hint: Run "java -help" - try the "-cp" switch
 
-java -cp src/ Hello
+##java -cp src/ Hello
 
 * Do you still need the .java file in order to run the compiled Hello program?
   * Hint: try moving the Hello.java file to /tmp and re-run the program, then move Hello.java back to src
 
-No you dont
+##No you dont
 
 ### Packages and classpath
 
@@ -82,22 +82,22 @@ Questions:
 
 * How do you compile Calc.java?
 
-javac calc/Calc.java
+##javac calc/Calc.java
 
 * Can you still compile Hello.java?  If not, what's the error?
 
-Yes
+##Yes
 
 * Can you still run Hello after compiling it?  If not, what's the error?
 
-Yes
+##Yes
 
 * If you were compiling and running Hello from the src dir, try repeating these
   steps from the parent dir.  What switches to javac and java do you need to use?
 
-javac -cp src/ src/Hello.java
+##javac -cp src/ src/Hello.java
 
-java -cp src/ Hello
+##java -cp src/ Hello
 
 ### Adding methods
 
