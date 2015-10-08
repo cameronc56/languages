@@ -2,7 +2,13 @@ BITS 32
 
 GLOBAL _Kernel_Start:function
 
+KERNEL_VIRTUAL_BASE equ 0xC0000000
+KERNEL_PAGE_TABLE equ (KERNEL_VIRTUAL_BASE >> 22)
+
+EXTERN main	; link to main.c
+
 SECTION .text
+
 
 ; BEGIN - Multiboot Header
 MultibootSignature dd 464367618 ; Decimal for 0x1BADB002
@@ -11,7 +17,7 @@ MultibootChecksum dd -464367621 ; Checksum for config
 MultibootGraphicsRuntime_VbeModeInfoAddr dd 2147483647
 MultibootGraphicsRuntime_VbeControlInfoAddr dd 2147483647
 MultibootGraphicsRuntime_VbeMode dd 2147483647
-MultibootInfo_Memory_High dd 0
+MultibootInfo_Memory_High dd 0	; allocate memory for multiboot vars
 MultibootInfo_Memory_Low dd 0
 MultibootInfo_Structure dd 0
 ; END - Multiboot Header
@@ -31,6 +37,7 @@ MultibootInfo_Structure dd 0
 ; 11. enable paging in CR0
 ; 12. set up virtual addressing
 ; 13. jump to a higher half kernel
+; 14. create interrupt handlers
 
 Kernel_Stack_End:    ; <- assembly 'label'. is initiated as an address in memory.
     TIMES 65535 db 0 ; repeats db 0 65535 times. 65535 is binary 1111111111111111 and hex 0x0000FFFF
@@ -61,6 +68,22 @@ GDT_Pointer db 39, 0, 0, 0, 0, 0	; first two bytes are length(in bytes) of GDT t
 					; followed by 4 bytes specifying the address of the GDT table.
 
 
+IDT_Contents: TIMES 2048 db 0	    ; allocate table memory
+; how to add to IDT:
+mov dword EBX, IDT_Contents
+mov dword EAX, InterruptHandler0
+mov byte [EBX], al
+mov byte [ebx+1], ah
+shr dword eax, 0x10
+mov byte [ebx+6], al
+mov byte [ebx+7], ah
+mov word [ebx+2], 0x8
+mov byte [ebx+4], 0x0
+mov byte [ebx+5], 0x8F
+
+add ebx, 8
+; done adding IDT entry
+
 _Kernel_Start:
     
     cli ; CLear Interrupts. This sets the IF (Interrupt Flag) to 0 in x86 FLAGS register. When set to 0
@@ -73,16 +96,16 @@ _Kernel_Start:
     ; Check for multiboot:
     mov dword ECX, 0x2BADB002	; multiboot magic number
     cmp ECX, EAX		; compare
-    jne HandleNoMultiboot	; jump if not equals
+    jne (HandleNoMultiboot - KERNEL_VIRTUAL_BASE)	; jump if not equals
 
     ; Fill vars with Multiboot structure info:
-    mov dword [MultibootInfo_Structure], EBX	;
+    mov dword [MultibootInfo_Structure - KERNEL_VIRTUAL_BASE], EBX	;
     add dword EBX, 0x4				; increment by 4 bits
     mov dword EAX, [EBX]			;
-    mov dword [MultibootInfo_Memory_Low], EAX	;
+    mov dword [MultibootInfo_Memory_Low - KERNEL_VIRTUAL_BASE], EAX	;
     mov dword EBX, 0x4				; increment by 4 bits
     mov dword EAX, [EBX]			;
-    mov dword [MultibootInfo_Memory_High], EAX	;
+    mov dword [MultibootInfo_Memory_High - KERNEL_VIRTUAL_BASE], EAX	;
 
     ; Switch to protected mode
     mov dword EAX, CR0	; CR0 cannot be modified directly, it must be moved to a register
@@ -90,12 +113,24 @@ _Kernel_Start:
     mov dword CR0, EAX	; and then moved back
 
     ; Set Stack Pointer
-    mov dword ESP, Kernel_Stack_Start	; ESP = Stack Pointer
+    mov dword ESP, (Kernel_Stack_Start - KERNEL_VIRTUAL_BASE)	; ESP = Stack Pointer
 
     ; tell cpu about GDT
-    mov dword [GDT_Pointer + 2], GDT_Contents	; move the GDT table next to the GDT Pointer
-    mov dword EAX, GDT_Pointer			; move to register
+    mov dword [GDT_Pointer - KERNEL_VIRTUAL_BASE + 2], (GDT_Contents - KERNEL_VIRTUAL_BASE)	; move the GDT table next to the GDT Pointer
+    mov dword EAX, (GDT_Pointer	- KERNEL_VIRTUAL_BASE)		; move to register
     lgdt [EAX]					; load GDT
+
+    ; set data segments
+    mov dword EAX, 0x10
+    mov word DS, EAX
+    mov word ES, EAX
+    mov word FS, EAX
+    mov word GS, EAX
+    mov word SS, EAX
+    
+    ; force reload of code segment
+    jmp 8:(boot_flushCsGDT - KERNEL_VIRTUAL_BASE)
+boot_flushCsGDT:
 
     jmp PrintToScreen
 
@@ -148,8 +183,43 @@ HandleNoMultiboot:
        
 HandleNoMultiboot_End: 
 
+; jump over interupt handler
+jmp IDT_Start
+InterruptHandler0:
+    mov EAX, 0x023D
+    mov EBX, 0xB8000
+    mov ECX, 2000
+
+    Print:
+      mov word [EBX], AX
+      add EBX, 2
+    loop Print
+
+IDT_Start:
+IDT_Pointer db 0xFF, 0x7, 0, 0, 0,0 ; 0x7FF = 2047 = 2048 - 1
+mov dword [IDT_Pointer + 2], IDT_Contents
+mov dword EAX, IDT_Pointer
+lidt [EAX] 
+
+; divide by 0
+; mov eax, 0
+; mov ebx, 10
+; div ebx
+
+
+lea EAX, [main - KERNEL_VIRTUAL_BASE]
+call EAX	; call c function
 
 Halt:
     cli		; ignore maskable interrupts
     hlt		; halt the cpu (hlt is broken by interrupts)
     jmp Halt	; re-halt if a non-maskable interrupt occurs
+
+SECTION .bss
+
+GLOBAL Page_Table1:data
+GLOBAL Page_Directory:data
+
+align 4096
+Page_Table1: resb(1024 * 4 * 1024)	; reserve space for page table
+Page_Directory: resb (1024 * 4 * 1) ;	; reserve space for page directory
