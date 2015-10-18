@@ -207,6 +207,7 @@ lidt [EAX]
 ; div ebx
 
 
+
 lea EAX, [main - KERNEL_VIRTUAL_BASE]
 call EAX	; call c function
 
