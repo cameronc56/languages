@@ -5,7 +5,7 @@ nasm -g -f elf -o kernel.o kernel.asm
 #gcc -S main.c -nostartfiles -nostdlib -masm=intel
 echo "Executing GCC..."
 #gcc kernel.o main.c -o kernel.bin -T linker.ld -m32 -nostartfiles -nostdlib -masm=intel
-i686-elf-4.9.1-Linux-x86_64/bin/i686-elf-gcc kernel.o main.c -o kernel.bin -T linker.ld -nostartfiles -nostdlib -masm=intel
+i686-elf-4.9.1-Linux-x86_64/bin/i686-elf-gcc kernel.o main.c output.c globals.h -o kernel.bin -T linker.ld -nostartfiles -nostdlib -masm=intel
 #Linker not needed when executing GCC...
 #echo "Executing linker (ld)...#"
 #ld -m elf_i386 -s -T linker.ld -o kernel.bin kernel.o

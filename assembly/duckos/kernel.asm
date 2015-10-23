@@ -128,9 +128,9 @@ _Kernel_Start:
     mov word GS, EAX
     mov word SS, EAX
     
-    ; force reload of code segment
-    jmp 8:(boot_flushCsGDT - KERNEL_VIRTUAL_BASE)
-boot_flushCsGDT:
+    ; force reload of CS (code segment)
+    jmp 8:(boot_flushCS_GDT - KERNEL_VIRTUAL_BASE)
+boot_flushCS_GDT:
 
     jmp PrintToScreen
 
@@ -201,13 +201,8 @@ mov dword [IDT_Pointer + 2], IDT_Contents
 mov dword EAX, IDT_Pointer
 lidt [EAX] 
 
-; divide by 0
-; mov eax, 0
-; mov ebx, 10
-; div ebx
 
-
-
+//call main.c
 lea EAX, [main - KERNEL_VIRTUAL_BASE]
 call EAX	; call c function
 
