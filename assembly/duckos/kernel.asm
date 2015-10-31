@@ -123,7 +123,7 @@ _Kernel_Start:
 boot_flushCsGDT:
 
 PrintToScreen:
-    mov EAX, 0x023F  ; 16 bits saved in the 32 bit register. 0 = black bg, 2 = green fg, 3F = ? char. 
+    mov EAX, 0x0200  ; 16 bits saved in the 32 bit register. 0 = black bg, 2 = green fg, 3F = ? char. 
     mov EBX, 0xB8000 ; start of display
     mov ECX, 2000    ; VGA Text-Mode Display Size, 25x80, so loop output to screen 2000x
 
@@ -137,6 +137,33 @@ CallMain:
 	lea EAX, [main - KERNEL_VIRTUAL_BASE]
 	call EAX	; call c function
 	jmp Halt
+
+
+; BEGIN - Interrupt Handler Macro       
+EXTERN CommonInterruptHandler
+
+%macro CommonInterruptHandlerMacro 1
+GLOBAL CommonInterruptHandler%1:function
+CommonInterruptHandler%1:
+        pushad
+
+        push dword %1
+        call CommonInterruptHandler
+        add esp, 4
+
+        popad
+
+    IRet
+%endmacro
+%assign HandlerNum 0
+%rep 256
+    CommonInterruptHandlerMacro HandlerNum
+    %assign HandlerNum HandlerNum+1
+%endrep
+; END - Interrupt Handler Macro
+
+
+
 
 HandleNoMultiboot:
     ; Output following text to first bit of vid mem
