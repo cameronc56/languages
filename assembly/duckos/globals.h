@@ -2,6 +2,7 @@
 #define KERNEL_VIRTUAL_BASE 0xC0000000
 #define KERNEL_PAGE_TABLE (KERNEL_VIRTUAL_BASE >> 22)
 
+//nop is required after sti/cli becausee they do not go into effect until after the next instruction runs.
 //start interrupts
 #define STI \
 __asm__\

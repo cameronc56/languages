@@ -1,6 +1,8 @@
 BITS 32 
 
 GLOBAL _Kernel_Start:function
+GLOBAL IDT_Contents:data
+GLOBAL IDT_Pointer:data
 
 KERNEL_VIRTUAL_BASE equ 0xC0000000
 KERNEL_PAGE_TABLE equ (KERNEL_VIRTUAL_BASE >> 22)
@@ -31,12 +33,12 @@ MultibootInfo_Structure dd 0
 ; 5. set the stack pointer				DONE
 ; 6. Tell CPU about GDT					DONE
 ; 7. Halt the CPU					DONE				
-; 8. Jump to C, rewrite screen output code in C		
-; 9. Create TSS Segment and initiate it
-; 10. set up paging
-; 11. enable paging in CR0
-; 12. set up virtual addressing
-; 13. jump to a higher half kernel
+; 8. Jump to C, rewrite screen output code in C		DONE
+; 9. Create TSS Segment and initiate it			
+; 10. set up paging					DONE
+; 11. enable paging in CR0				DONE
+; 12. set up virtual addressing				DONE
+; 13. jump to a higher half kernel			DONE
 ; 14. create interrupt handlers
 
 Kernel_Stack_End:    ; <- assembly 'label'. is initiated as an address in memory.
@@ -69,20 +71,8 @@ GDT_Pointer db 39, 0, 0, 0, 0, 0	; first two bytes are length(in bytes) of GDT t
 
 
 IDT_Contents: TIMES 2048 db 0	    ; allocate table memory
-; how to add to IDT:
-mov dword EBX, IDT_Contents
-mov dword EAX, InterruptHandler0
-mov byte [EBX], al
-mov byte [ebx+1], ah
-shr dword eax, 0x10
-mov byte [ebx+6], al
-mov byte [ebx+7], ah
-mov word [ebx+2], 0x8
-mov byte [ebx+4], 0x0
-mov byte [ebx+5], 0x8F
+IDT_Pointer db 0xFF, 0x7, 0, 0, 0,0 ; 0x7FF = 2047 = 2048 - 1
 
-add ebx, 8
-; done adding IDT entry
 
 _Kernel_Start:
     
@@ -129,10 +119,8 @@ _Kernel_Start:
     mov word SS, EAX
     
     ; force reload of CS (code segment)
-    jmp 8:(boot_flushCS_GDT - KERNEL_VIRTUAL_BASE)
-boot_flushCS_GDT:
-
-    jmp PrintToScreen
+    jmp 8:(boot_flushCsGDT - KERNEL_VIRTUAL_BASE)
+boot_flushCsGDT:
 
 PrintToScreen:
     mov EAX, 0x023F  ; 16 bits saved in the 32 bit register. 0 = black bg, 2 = green fg, 3F = ? char. 
@@ -144,7 +132,11 @@ PrintToScreen:
         add EBX, 2         ; moves to the next location on the screen
     loop print             ; loops 2000x (value of ECX)
 
-    jmp HandleNoMultiboot_End
+; call main.c
+CallMain:
+	lea EAX, [main - KERNEL_VIRTUAL_BASE]
+	call EAX	; call c function
+	jmp Halt
 
 HandleNoMultiboot:
     ; Output following text to first bit of vid mem
@@ -179,32 +171,7 @@ HandleNoMultiboot:
     mov byte [0xB8013], al
     mov byte [0xB8015], al
     mov byte [0xB8017], al
-    jmp Halt    
-       
-HandleNoMultiboot_End: 
-
-; jump over interupt handler
-jmp IDT_Start
-InterruptHandler0:
-    mov EAX, 0x023D
-    mov EBX, 0xB8000
-    mov ECX, 2000
-
-    Print:
-      mov word [EBX], AX
-      add EBX, 2
-    loop Print
-
-IDT_Start:
-IDT_Pointer db 0xFF, 0x7, 0, 0, 0,0 ; 0x7FF = 2047 = 2048 - 1
-mov dword [IDT_Pointer + 2], IDT_Contents
-mov dword EAX, IDT_Pointer
-lidt [EAX] 
-
-
-//call main.c
-lea EAX, [main - KERNEL_VIRTUAL_BASE]
-call EAX	; call c function
+    jmp Halt
 
 Halt:
     cli		; ignore maskable interrupts
