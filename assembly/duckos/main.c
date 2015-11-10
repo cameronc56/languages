@@ -1,4 +1,5 @@
 //includes
+#include "helpers.c"
 #include "IssueInterrupt.c"
 #include "CommonInterruptHandler.c"		//keyboard map
 #include "CommonInterruptHandlerExtern.c"
@@ -7,10 +8,10 @@
 
 //main.h
 void itoa(int i, char *p);
+void PrintLine(char text[]);
 
 
-
-extern unsigned int Page_Table1[1024 * 1024];	// # of entries/page table * total # of page tables 
+extern unsigned int Page_Table[1024 * 1024];	// # of entries/page table * total # of page tables
 												//		actual size = 4194304 bytes = 4MiB, represents 4GiB in physical memory (size of unsigned int = 4 bytes)
 												//		ie. each 4 byte entry represent 4 KiB in physical memory
 extern unsigned int Page_Directory[1024 * 1];  	// # of pages tables * # of directory (4096 bytes = 4 KiB)
@@ -70,26 +71,6 @@ void DisplayColour(unsigned char BackgroundColour, unsigned char ForegroundColou
 	Delay();
 }
 
-
-
-void itoa(int i, char *p){
-    char const digit[] = "0123456789";
-    if(i<0){
-        *p++ = '-';
-        i *= -1;
-    }
-    int shifter = i;
-    do{ //Move to where representation ends
-        ++p;
-        shifter = shifter/10;
-    }while(shifter);
-    *p = '\0';
-    do{ //Move back, inserting digits as u go
-        *--p = digit[i%10];
-        i = i/10;
-    }while(i);
-}
-
 void ShiftDisplayUpOneLine()
 {
 	unsigned short* DisplayMemoryPtr = (unsigned short*)0xB8000;
@@ -103,32 +84,57 @@ void ShiftDisplayUpOneLine()
 		DisplayMemoryPtr[i] = 0x0000;
 	}
 }
-void Print(char text[])
-{
+void Print(char text[], int isCommand) {
+	isCommand = 1; //default value
 	static unsigned int CurrentLocation = 0;
 	
 	unsigned short* DisplayMemoryPtr = (unsigned short*)0xB8000;
 	
 	int i;
-	for(i = 0; text[i] != 0; i++)
-	{
-		if(CurrentLocation == DISPLAY_SIZE) 
-		{
+	for(i = 0; text[i] != 0; i++) {
+		if(CurrentLocation == DISPLAY_SIZE) {
 			ShiftDisplayUpOneLine();
 			CurrentLocation -= 80;
 		}
 		
-		if(text[i] == '\n') 
-		{
+		if(text[i] == '\n' && isCommand == 1) {
+
+			char textEnteredOnLastLine[80];
+			int i;
+			for(i = 0; i < 80; i++) {
+				textEnteredOnLastLine[i] = DisplayMemoryPtr[CurrentLocation - (CurrentLocation % 80) + i];
+			}
+			
+			//TODO
+			//create another file
+			//with a function, that can parse the text entered on the last line
+			//much better, and then pass it off to the appropriate commands function.
+
+			if( textEnteredOnLastLine[0] == 'q' &&
+				textEnteredOnLastLine[1] == 'u' &&
+				textEnteredOnLastLine[2] == 'a' &&
+				textEnteredOnLastLine[3] == 'c' &&
+				textEnteredOnLastLine[4] == 'k' &&
+				textEnteredOnLastLine[5] == ' '
+			  ) {
+			  		char textToQuack[74];
+			  		int i;
+					for(i = 0; i < 74; i++) {
+						textToQuack[i] = textEnteredOnLastLine[i + 6];
+					}
+					CurrentLocation += (80 - (CurrentLocation % 80));
+					Print(textToQuack, 0);
+			}
+
 			CurrentLocation += (80 - (CurrentLocation % 80));
-		}
-    else if(text[i] == '\t') 
-		{
+
+
+
+
+		} else if(text[i] == '\t') {
       int spaces;
-      for(spaces = 0; spaces < 4; spaces++)
-      {
-        if(CurrentLocation == DISPLAY_SIZE) 
-        {
+      for(spaces = 0; spaces < 4; spaces++) {
+        if(CurrentLocation == DISPLAY_SIZE) {
           ShiftDisplayUpOneLine();
           CurrentLocation -= 80;
         }
@@ -136,15 +142,12 @@ void Print(char text[])
         DisplayMemoryPtr[CurrentLocation++] = (unsigned short)(0x0200 | ' ');
       }
 		}
-		else if(text[i] == '\b') 
-		{
-      if(CurrentLocation > 0)
-      {
-			  DisplayMemoryPtr[--CurrentLocation] = (unsigned short)(0x0200 | ' ');
-      }
+		else if(text[i] == '\b') {
+      		if((CurrentLocation % 80) > 0) {	//stops user from backspacing to line above current
+				DisplayMemoryPtr[--CurrentLocation] = (unsigned short)(0x0200 | ' ');
+    		}
 		}
-		else
-		{
+		else {
 			DisplayMemoryPtr[CurrentLocation++] = (unsigned short)(0x0200 | text[i]);
 		}
 		
@@ -154,14 +157,12 @@ void Print(char text[])
 		outb(0x3D5, (unsigned char)(CurrentLocation));
 	}
 }
-void PrintLine(char text[])
-{
-	Print(text);
-	Print("\n");
+void PrintLine(char text[]) {
+	Print(text, 0);
+	Print("\n", 0);
 }
 
-void main() 
-{			
+void main() {
 	// DisplayColour and Delay methods cannot be used until virtual addressing is set up i.e. until PG bit of CR0 is on.
 	// Use inline assembly colour method for debugging.
 	// This is because until virtual addressing is set up, code is only accessible through physical addresses but method calls 
@@ -175,13 +176,12 @@ void main()
 	
 	unsigned int index = 0;
 	
-	unsigned int* Page_Table1_Physical = (unsigned int*)((unsigned int)Page_Table1 - KERNEL_VIRTUAL_BASE);
+	unsigned int* Page_Table_Physical = (unsigned int*)((unsigned int)Page_Table - KERNEL_VIRTUAL_BASE);
 	unsigned int* Page_Directory_Physical = (unsigned int*)((unsigned int)Page_Directory - KERNEL_VIRTUAL_BASE);
 	
 	//Setting up identity mapping
-	while(index < (SizeOfPageTables + StartPageTableEntryIndex))
-	{
-		Page_Table1_Physical[index] = PhysicalAddressAndFlags;
+	while(index < (SizeOfPageTables + StartPageTableEntryIndex)) {
+		Page_Table_Physical[index] = PhysicalAddressAndFlags;
 		index = index + 1;
 		PhysicalAddressAndFlags = PhysicalAddressAndFlags + 4096;
 	}
@@ -192,12 +192,12 @@ void main()
 	
 	while(index < (SizeOfPageTables + StartPageTableEntryIndex))
 	{
-		Page_Table1_Physical[index] = PhysicalAddressAndFlags;
+		Page_Table_Physical[index] = PhysicalAddressAndFlags;
 		index = index + 1;
 		PhysicalAddressAndFlags = PhysicalAddressAndFlags + 4096;
 	}
 	
-	PhysicalAddressAndFlags = (unsigned int)&Page_Table1_Physical[0];
+	PhysicalAddressAndFlags = (unsigned int)&Page_Table_Physical[0];
 	PhysicalAddressAndFlags = PhysicalAddressAndFlags | 7;	//0b111 - Setting Page Table flags (Present: ON, Read/Write: ON, User/Supervisor: ON)
 	
 	unsigned int EntriesOfPageDirectory = 1024;
@@ -293,7 +293,7 @@ void main()
 	
 	STI
 	// END - Configure PIT (The Timer)
-	
+
 	while(1)
 	{
     	;

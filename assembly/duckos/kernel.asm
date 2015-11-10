@@ -207,9 +207,9 @@ Halt:
 
 SECTION .bss
 
-GLOBAL Page_Table1:data
+GLOBAL Page_Table:data
 GLOBAL Page_Directory:data
 
 align 4096
-Page_Table1: resb(1024 * 4 * 1024)	; reserve space for page table
+Page_Table: resb(1024 * 4 * 1024)	; reserve space for page table
 Page_Directory: resb (1024 * 4 * 1) ;	; reserve space for page directory

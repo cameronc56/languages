@@ -1,5 +1,5 @@
 void outb(unsigned short port, unsigned char value);
-void Print(char text[]);
+void Print(char text[], int isCommand);
 void itoa(int i, char *p);
 
 void CommonInterruptHandler(int handlerNum) {
@@ -13,8 +13,7 @@ void CommonInterruptHandler(int handlerNum) {
 	//Delay();
 	//DisplayColourArea(0x0, 0xF, handlerNum, 1);
 
-	if(handlerNum == 33)
-	{
+	if(handlerNum == 33) {
     /* Note: If you add or remove local variables to/from this method or change
              any function calls (including adding/removing arguments) you must
              update the EBP-9 value below.
@@ -32,67 +31,61 @@ void CommonInterruptHandler(int handlerNum) {
 		__asm__
 		(
 			"inb AL, 0x60\n"
-      "mov byte ptr [EBP-9], al\n"
+            "mov byte ptr [EBP-9], al\n"
 		);
 
     unsigned int shiftedScanCode;
     unsigned char processChar = 1;
     unsigned char released = (scanCode & 0x80);
-    if(released)
-    {
+    if(released) {
       scanCode ^= 0x80;
     }
 
     shiftedScanCode = scanCode;
-    switch (shiftedScanCode)
-    {
+    switch (shiftedScanCode) {
       //Left and right shift keys
       case 0x36:
-      case 0x2A:
-        {
+      case 0x2A: {
           shiftPressed = !released;
           processChar = 0;
           break;
-        }
+      }
       //Ctrl key
-      case 0x1D:
-        {
+      case 0x1D: {
           ctrlPressed = !released;
           processChar = 0;
           break;
-        }
+      }
       //Alt key
-      case 0x38:
-        {
+      case 0x38: {
           altPressed = !released;
           processChar = 0;
           break;
-        }
+      }
       //All other keys
       default:
         {
           //If the key was just pressed, enqueue it
-          if (!released)
-          {
+          if (!released) {
             //If shift pressed, adjust the scancode appropriately.
-            if (shiftPressed)
-            {
-              shiftedScanCode = shiftedScanCode << 16;
+            if (shiftPressed) {
+                if(shiftedScanCode >= 0x47 && shiftedScanCode <= 0x53) {
+                    //dont do anything with shift key on numpad;
+                } else {
+                     shiftedScanCode = shiftedScanCode << 16;
+                }
             }
           }
-          else
-          {
+          else {
             processChar = 0;
           }
         }
         break;
     }
 
-    if(processChar)
-    {
+    if(processChar) {
       char character[2];
-      switch (shiftedScanCode)
-      {
+      switch (shiftedScanCode) {
         case 0x10: character[0] = 'q'; break;
         case 0x100000: character[0] = 'Q'; break;
         case 0x11: character[0] = 'w'; break;
@@ -202,26 +195,43 @@ void CommonInterruptHandler(int handlerNum) {
         case 0x1C0000: character[0] = '\n'; break; //Enter (with shift)
         case 0x390000: character[0] = ' '; break;  //Space (with shift)
 
+        //numpad (
+        case 0x52: character[0] = '0'; break;
+        case 0x4F: character[0] = '1'; break;
+        case 0x50: character[0] = '2'; break;
+        case 0x51: character[0] = '3'; break;
+        case 0x4B: character[0] = '4'; break;
+        case 0x4C: character[0] = '5'; break;
+        case 0x4D: character[0] = '6'; break;
+        case 0x47: character[0] = '7'; break;
+        case 0x48: character[0] = '8'; break;
+        case 0x49: character[0] = '9'; break;
+
+        case 0x37: character[0] = '*'; break;
+        case 0x4A: character[0] = '-'; break;
+        case 0x4E: character[0] = '+'; break;
+        case 0x53: character[0] = '.'; break;
+
         default: character[0] = '?';
-		int keyboardCode = shiftedScanCode;
-		char snum[33];
-		itoa(keyboardCode, snum);
-		Print(snum);
+          int keyboardCode = shiftedScanCode;
+          char output[33];
+          itoa(shiftedScanCode, output);
+          Print(output, 1);
+          Print(" ", 1);
 		break;
       }
 
       character[1] = 0;
 
-      Print(character);
-    }
-	}
+      Print(character, 1);
 
-	if(handlerNum >= 32 && handlerNum < 48)
-	{
+    }
+  }
+
+	if(handlerNum >= 32 && handlerNum < 48) {
 		//DisplayColourArea(0x4, 0xF, handlerNum, 1);
 
-		if(handlerNum >= 40)
-		{
+		if(handlerNum >= 40) {
 			outb(0xA0, 0x20);
 		}
 		outb(0x20, 0x20);
