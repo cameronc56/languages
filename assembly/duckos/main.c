@@ -104,7 +104,7 @@ void Print(char text[], int isCommand) {
 			for(i = 0; i < 80; i++) {
 				textEnteredOnLastLine[i] = DisplayMemoryPtr[CurrentLocation - (CurrentLocation % 80) + i];
 			}
-			
+
 			//TODO
 			//create another file
 			//with a function, that can parse the text entered on the last line
