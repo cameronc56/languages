@@ -1,0 +1,51 @@
+To convert an mp3 file to a wav file:
+ffmpeg -i source.mp3 output.wav
+
+To get information about a file
+ffmpeg -i file.wav
+
+To get the # of samples in an audio stream:
+duration * sample rate * number of channels
+
+Rameses B - Bae Bae has
+
+4:24 (or 264) * 44100 * 2 = 23284800 samples 
+
+BETTER ALTERNATIVE
+use SoX (SOund eXchange)
+sudo apt-get install sox
+sudo apt-get install libsox-fmt-mp3
+
+cameronc@ubuntu:~/github/languages/python/AudioInspector$ sox Ramases\ B\ -\ Bae\ Bae.mp3 -n stat
+Samples read:          23288770
+Length (seconds):    264.045011
+Scaled by:         2147483647.0
+Maximum amplitude:     1.000000
+Minimum amplitude:    -1.000000
+Midline amplitude:    -0.000000
+Mean    norm:          0.195960
+Mean    amplitude:     0.000018
+RMS     amplitude:     0.268157
+Maximum delta:         1.809746
+Minimum delta:         0.000000
+Mean    delta:         0.147021
+RMS     delta:         0.197741
+Rough   frequency:         5175
+Volume adjustment:        1.000
+cameronc@ubuntu:~/github/languages/python/AudioInspector$ sox Rameses\ B\ -\ Bae\ Bae.wav -n stat
+Samples read:          23284800
+Length (seconds):    264.000000
+Scaled by:         2147483647.0
+Maximum amplitude:     0.999969
+Minimum amplitude:    -1.000000
+Midline amplitude:    -0.000015
+Mean    norm:          0.195993
+Mean    amplitude:     0.000017
+RMS     amplitude:     0.268180
+Maximum delta:         1.809753
+Minimum delta:         0.000000
+Mean    delta:         0.147046
+RMS     delta:         0.197758
+Rough   frequency:         5175
+Volume adjustment:        1.000
+
